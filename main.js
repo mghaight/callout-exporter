@@ -14,10 +14,7 @@ const { Plugin, Notice, TFile, normalizePath } = require("obsidian");
 const CALLOUT_TYPES = ["todo", "questions"];
 
 // Where to put master files. "" means vault root.
-const MASTER_PATHS = {
-    todo: "Rough Notes/To Do.md",
-    question: "Rough Notes/Questions.md",
-};
+const MASTER_FOLDER = "";
 
 /**
  * =========================
@@ -49,7 +46,8 @@ function generateId(len = 8) {
 }
 
 function masterPathForType(type) {
-    return normalizePath(MASTER_PATHS[type] ?? `${type}.md`);
+    const name = `${type}.md`;
+    return normalizePath(MASTER_FOLDER ? `${MASTER_FOLDER}/${name}` : name);
 }
 
 function isAlreadyExistsError(e) {
