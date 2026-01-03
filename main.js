@@ -50,6 +50,14 @@ function masterPathForType(type) {
     return normalizePath(MASTER_FOLDER ? `${MASTER_FOLDER}/${name}` : name);
 }
 
+function isAlreadyExistsError(e) {
+    const code = e?.code ? String(e.code).toUpperCase() : "";
+    if (code === "EEXIST") return true;
+
+    const msg = (e?.message ?? e?.toString?.() ?? String(e)).toLowerCase();
+    return msg.includes("already exists") || msg.includes("eexist");
+}
+
 function isMarkdownFile(file) {
     return file instanceof TFile && file.extension.toLowerCase() === "md";
 }
@@ -303,34 +311,43 @@ module.exports = class CalloutMasterExportPlugin extends Plugin {
     }
 
     async ensureMasterFilesExist() {
-        // If using a master folder, ensure it exists first.
+        const adapter = this.app.vault.adapter;
+
+        // Create master folder if configured
         if (MASTER_FOLDER) {
             const folderPath = normalizePath(MASTER_FOLDER);
-            const existingFolder =
-                this.app.vault.getAbstractFileByPath(folderPath);
-            if (!existingFolder) {
+            const st = await adapter.stat(folderPath);
+
+            if (!st) {
                 try {
                     await this.app.vault.createFolder(folderPath);
                 } catch (e) {
-                    // If another process created it first, ignore.
-                    if (!String(e).toLowerCase().includes("already exists"))
-                        throw e;
+                    if (!isAlreadyExistsError(e)) throw e;
                 }
+            } else if (st.type !== "folder") {
+                new Notice(
+                    `Callout exporter: "${folderPath}" exists but is not a folder. Fix it or set MASTER_FOLDER="" in main.js.`,
+                );
+                return; // don't crash the plugin
             }
         }
 
         for (const [, mPath] of this.masterPathsByType.entries()) {
-            // More reliable than getAbstractFileByPath during early startup
-            const existsOnDisk = await this.app.vault.adapter.exists(mPath);
-            if (existsOnDisk) continue;
+            const st = await adapter.stat(mPath);
+
+            if (st) {
+                if (st.type !== "file") {
+                    new Notice(
+                        `Callout exporter: "${mPath}" exists but is not a file. Rename/remove it so the plugin can use it.`,
+                    );
+                }
+                continue;
+            }
 
             try {
                 await this.app.vault.create(mPath, "");
             } catch (e) {
-                // If file was created between exists() and create(), ignore.
-                if (String(e).toLowerCase().includes("already exists"))
-                    continue;
-                throw e;
+                if (!isAlreadyExistsError(e)) throw e;
             }
         }
     }
