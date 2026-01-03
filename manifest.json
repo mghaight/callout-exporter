@@ -1,0 +1,9 @@
+{
+    "id": "callout-exporter",
+    "name": "Callout Exporter",
+    "version": "0.1.0",
+    "minAppVersion": "1.4.0",
+    "description": "Export tracked callouts to per-type master files and keep them in sync.",
+    "author": "Mackenzie G. Haight",
+    "isDesktopOnly": false
+}
