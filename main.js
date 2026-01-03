@@ -11,7 +11,7 @@ const { Plugin, Notice, TFile, normalizePath } = require("obsidian");
  *
  * Default:
  */
-const CALLOUT_TYPES = ["todo", "question"];
+const CALLOUT_TYPES = ["todo", "questions"];
 
 // Where to put master files. "" means vault root.
 const MASTER_FOLDER = "";
