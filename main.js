@@ -303,10 +303,34 @@ module.exports = class CalloutMasterExportPlugin extends Plugin {
     }
 
     async ensureMasterFilesExist() {
-        for (const [type, mPath] of this.masterPathsByType.entries()) {
-            const existing = this.app.vault.getAbstractFileByPath(mPath);
-            if (!existing) {
+        // If using a master folder, ensure it exists first.
+        if (MASTER_FOLDER) {
+            const folderPath = normalizePath(MASTER_FOLDER);
+            const existingFolder =
+                this.app.vault.getAbstractFileByPath(folderPath);
+            if (!existingFolder) {
+                try {
+                    await this.app.vault.createFolder(folderPath);
+                } catch (e) {
+                    // If another process created it first, ignore.
+                    if (!String(e).toLowerCase().includes("already exists"))
+                        throw e;
+                }
+            }
+        }
+
+        for (const [, mPath] of this.masterPathsByType.entries()) {
+            // More reliable than getAbstractFileByPath during early startup
+            const existsOnDisk = await this.app.vault.adapter.exists(mPath);
+            if (existsOnDisk) continue;
+
+            try {
                 await this.app.vault.create(mPath, "");
+            } catch (e) {
+                // If file was created between exists() and create(), ignore.
+                if (String(e).toLowerCase().includes("already exists"))
+                    continue;
+                throw e;
             }
         }
     }
